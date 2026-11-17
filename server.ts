@@ -21,7 +21,7 @@ const __dirname = path.dirname(__filename);
 const DATA_DIR = path.resolve(__dirname, '.data');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const DB_FILE = path.join(DATA_DIR, 'prescriptions.json');
-const LOYALTY_FILE = path.join(DATA_DIR, 'loyalty.json');
+const LOYALTY_FILE = path.join(DATA_DIR, 'loyalty_multi.json');
 const CUSTOM_PRODUCTS_FILE = path.join(DATA_DIR, 'custom-products.json');
 
 const CATEGORY_DEFAULT_IMAGES: Record<CategoryId, string> = {
@@ -116,6 +116,7 @@ function getActiveStaffSession(req: express.Request): StaffSession | null {
 }
 
 interface StoredPrescriptionRecord extends PrescriptionSubmission {
+  visitorId?: string;
   fileStorageNames: Record<string, string>;
 }
 
@@ -350,71 +351,78 @@ function writeDb(records: StoredPrescriptionRecord[]) {
   fs.writeFileSync(DB_FILE, JSON.stringify(records, null, 2), 'utf8');
 }
 
-function seedLoyaltyIfNeeded(): UserLoyaltyProfile {
+function getVisitorId(req: express.Request): string {
+  const h = req.headers['x-visitor-id'];
+  if (typeof h === 'string' && h.trim()) return h.trim();
+  const q = req.query.visitorId || req.query.vid;
+  if (typeof q === 'string' && q.trim()) return String(q).trim();
+  return 'default-visitor';
+}
+
+function seedLoyaltyForVisitor(visitorId: string): UserLoyaltyProfile {
   ensureStorageDirs();
+  let map: Record<string, UserLoyaltyProfile> = {};
   if (fs.existsSync(LOYALTY_FILE)) {
     try {
       const raw = fs.readFileSync(LOYALTY_FILE, 'utf8');
-      const parsed = JSON.parse(raw) as UserLoyaltyProfile;
-      if (parsed && typeof parsed.pointsBalance === 'number') {
-        return parsed;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        map = parsed;
       }
     } catch {
-      // fall through to re-seed if corrupted
+      // ignore
     }
+  }
+
+  if (map[visitorId]) {
+    return map[visitorId];
   }
 
   const now = Date.now();
   const seeded: UserLoyaltyProfile = {
-    memberId: 'MAR-CLUB-1042',
-    fullName: 'محمود عادل',
-    phone: '01024891120',
-    address: 'شارع الجمهورية الرئيسي، المنصورة',
-    pointsBalance: 136,
-    lifetimeEarned: 236,
-    lifetimeRedeemed: 100,
-    ordersCount: 3,
-    updatedAt: new Date(now - 24 * 60 * 60 * 1000).toISOString(),
+    memberId: `MAR-CLUB-${Math.floor(1000 + Math.random() * 9000)}`,
+    fullName: '',
+    phone: '',
+    address: '',
+    pointsBalance: 50,
+    lifetimeEarned: 50,
+    lifetimeRedeemed: 0,
+    ordersCount: 0,
+    updatedAt: new Date(now).toISOString(),
     transactions: [
       {
-        id: 'loy-seed-3',
-        type: 'earned',
-        points: 11,
-        egpValue: 1150,
-        orderNumber: 'MAR-88412',
-        descriptionAr: 'نقاط مكتسبة من الطلب #MAR-88412',
-        descriptionEn: 'Points earned from order #MAR-88412',
-        createdAt: new Date(now - 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'loy-seed-2',
-        type: 'redeemed',
-        points: 100,
-        egpValue: 50,
-        orderNumber: 'MAR-86109',
-        descriptionAr: 'استبدال نقاط بخصم 50 ج.م على الطلب #MAR-86109',
-        descriptionEn: 'Redeemed 100 pts for 50 EGP discount on #MAR-86109',
-        createdAt: new Date(now - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'loy-seed-1',
+        id: `loy-welcome-${crypto.randomUUID().slice(0, 6)}`,
         type: 'bonus',
-        points: 225,
-        egpValue: 112,
-        descriptionAr: 'نقاط ترحيبية ومشتريات سابقة في نادي الولاء',
-        descriptionEn: 'Welcome club bonus & prior purchase points',
-        createdAt: new Date(now - 10 * 24 * 60 * 60 * 1000).toISOString(),
+        points: 50,
+        egpValue: 25,
+        descriptionAr: 'نقاط ترحيبية لانضمامك إلى نادي ولاء صيدلية محمد عبد ربه',
+        descriptionEn: 'Welcome bonus points for joining Mohamed Abd Raboo Pharmacy Club',
+        createdAt: new Date(now).toISOString(),
       },
     ],
   };
 
-  fs.writeFileSync(LOYALTY_FILE, JSON.stringify(seeded, null, 2), 'utf8');
+  map[visitorId] = seeded;
+  fs.writeFileSync(LOYALTY_FILE, JSON.stringify(map, null, 2), 'utf8');
   return seeded;
 }
 
-function writeLoyaltyDb(profile: UserLoyaltyProfile) {
+function writeLoyaltyForVisitor(visitorId: string, profile: UserLoyaltyProfile) {
   ensureStorageDirs();
-  fs.writeFileSync(LOYALTY_FILE, JSON.stringify(profile, null, 2), 'utf8');
+  let map: Record<string, UserLoyaltyProfile> = {};
+  if (fs.existsSync(LOYALTY_FILE)) {
+    try {
+      const raw = fs.readFileSync(LOYALTY_FILE, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        map = parsed;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  map[visitorId] = profile;
+  fs.writeFileSync(LOYALTY_FILE, JSON.stringify(map, null, 2), 'utf8');
 }
 
 function readCustomProducts(): Product[] {
@@ -695,6 +703,7 @@ async function startServer() {
 
       const newRecord: StoredPrescriptionRecord = {
         id: rxId,
+        visitorId: getVisitorId(req),
         linkedOrderNumber,
         linkedItems: Array.isArray(body.linkedItems) ? body.linkedItems : undefined,
         patientName,
@@ -957,17 +966,19 @@ async function startServer() {
   });
 
   // Loyalty Profile & Points Endpoints
-  app.get('/api/loyalty', (_req, res) => {
-    res.json(seedLoyaltyIfNeeded());
+  app.get('/api/loyalty', (req, res) => {
+    const visitorId = getVisitorId(req);
+    res.json(seedLoyaltyForVisitor(visitorId));
   });
 
   app.patch('/api/loyalty/profile', (req, res) => {
+    const visitorId = getVisitorId(req);
     const body = req.body as {
       fullName?: string;
       phone?: string;
       address?: string;
     };
-    const current = seedLoyaltyIfNeeded();
+    const current = seedLoyaltyForVisitor(visitorId);
     const next: UserLoyaltyProfile = {
       ...current,
       fullName: body.fullName !== undefined ? String(body.fullName).trim() : current.fullName,
@@ -975,11 +986,12 @@ async function startServer() {
       address: body.address !== undefined ? String(body.address).trim() : current.address,
       updatedAt: new Date().toISOString(),
     };
-    writeLoyaltyDb(next);
+    writeLoyaltyForVisitor(visitorId, next);
     res.json(next);
   });
 
   app.post('/api/loyalty/orders', (req, res) => {
+    const visitorId = getVisitorId(req);
     const body = req.body as {
       orderNumber?: string;
       customerName?: string;
@@ -989,7 +1001,7 @@ async function startServer() {
       redeemPoints?: number;
     };
 
-    const current = seedLoyaltyIfNeeded();
+    const current = seedLoyaltyForVisitor(visitorId);
     const orderNumber = String(body.orderNumber || `MAR-${Math.floor(10000 + Math.random() * 90000)}`).trim();
     const rawSubtotal = Number(body.subtotalPaidAfterDiscounts ?? 0);
     const paidBase = Number.isFinite(rawSubtotal) ? Math.max(0, rawSubtotal) : 0;
@@ -1057,7 +1069,7 @@ async function startServer() {
       updatedAt: nowIso,
     };
 
-    writeLoyaltyDb(updated);
+    writeLoyaltyForVisitor(visitorId, updated);
     res.json({
       profile: updated,
       pointsRedeemed: validRedeem,

@@ -13,6 +13,7 @@ import {
 import { PrescriptionView } from './components/PrescriptionView';
 import { ProductDetailView } from './components/ProductDetailView';
 import { UserProfileView } from './components/UserProfileView';
+import { AdminDashboardView } from './components/AdminDashboardView';
 import {
   loadSavedVisitor,
   saveVisitor,
@@ -50,7 +51,8 @@ type AppRoute =
   | { view: 'category'; categoryId: CategoryId | 'all' | 'offers' }
   | { view: 'product'; productId: string }
   | { view: 'prescription'; mode?: 'patient' | 'staff' }
-  | { view: 'profile' };
+  | { view: 'profile' }
+  | { view: 'admin' };
 
 export default function App() {
   const [lang, setLang] = useState<Language>(() => {
@@ -476,7 +478,11 @@ export default function App() {
     | 'offers'
     | 'prescription'
     | 'profile' =
-    route.view === 'category' && route.categoryId === 'offers' ? 'offers' : route.view;
+    route.view === 'admin'
+      ? 'home'
+      : route.view === 'category' && route.categoryId === 'offers'
+        ? 'offers'
+        : route.view;
 
   const selectedProduct =
     route.view === 'product'
@@ -608,6 +614,23 @@ export default function App() {
             onOpenCart={() => setIsCartOpen(true)}
           />
         )}
+
+        {route.view === 'admin' && (
+          <AdminDashboardView
+            lang={lang}
+            submissions={prescriptions}
+            onOrderUpdated={handleOrderUpdated}
+            customProducts={customProducts}
+            onProductAdded={(product) =>
+              setCustomProducts((prev) => [product, ...prev.filter((p) => p.id !== product.id)])
+            }
+            onProductDeleted={(productId) => {
+              setCustomProducts((prev) => prev.filter((p) => p.id !== productId));
+              setCartItems((prev) => prev.filter((c) => c.product.id !== productId));
+            }}
+            onBackHome={handleNavigateHome}
+          />
+        )}
       </div>
 
       <Footer
@@ -616,6 +639,10 @@ export default function App() {
         onNavigateOffers={() => handleSelectCategory('offers')}
         onOpenPrescription={() => handleOpenPrescription('patient')}
         onOpenStaffPortal={() => handleOpenPrescription('staff')}
+        onOpenAdmin={() => {
+          setRoute({ view: 'admin' });
+          scrollToTop();
+        }}
         onOpenProfile={handleOpenProfile}
         onToggleLanguage={handleToggleLanguage}
       />

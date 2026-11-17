@@ -18,6 +18,21 @@ export interface VisitorIdentity {
 }
 
 export const VISITOR_STORAGE_KEY = 'mar_pharmacy_visitor';
+export const VISITOR_ID_KEY = 'mar_pharmacy_visitor_id';
+
+export function getOrCreateVisitorId(): string {
+  if (typeof window === 'undefined') return 'default-visitor';
+  try {
+    let id = localStorage.getItem(VISITOR_ID_KEY);
+    if (!id) {
+      id = `v-${crypto.randomUUID()}`;
+      localStorage.setItem(VISITOR_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return 'default-visitor';
+  }
+}
 
 export function normalizeDigits(input: string): string {
   return input
@@ -27,6 +42,7 @@ export function normalizeDigits(input: string): string {
 
 export function loadSavedVisitor(): VisitorIdentity | null {
   if (typeof window === 'undefined') return null;
+  getOrCreateVisitorId(); // ensure visitor id exists
   try {
     const raw = localStorage.getItem(VISITOR_STORAGE_KEY);
     if (!raw) return null;
@@ -52,6 +68,7 @@ export function loadSavedVisitor(): VisitorIdentity | null {
 
 export function saveVisitor(visitor: VisitorIdentity): void {
   if (typeof window === 'undefined') return;
+  getOrCreateVisitorId();
   try {
     localStorage.setItem(VISITOR_STORAGE_KEY, JSON.stringify(visitor));
   } catch {

@@ -159,6 +159,20 @@ export async function fileToStagedUpload(file: File): Promise<StagedUploadFile> 
   };
 }
 
+function getVisitorId(): string {
+  if (typeof window === 'undefined') return 'default-visitor';
+  try {
+    let id = localStorage.getItem('mar_pharmacy_visitor_id');
+    if (!id) {
+      id = `v-${crypto.randomUUID()}`;
+      localStorage.setItem('mar_pharmacy_visitor_id', id);
+    }
+    return id;
+  } catch {
+    return 'default-visitor';
+  }
+}
+
 export async function fetchPrescriptions(
   status?: PrescriptionStatus | 'all',
   query?: string
@@ -167,7 +181,9 @@ export async function fetchPrescriptions(
   if (status && status !== 'all') params.set('status', status);
   if (query && query.trim()) params.set('q', query.trim());
   const qs = params.toString();
-  const res = await fetch(`/api/prescriptions${qs ? `?${qs}` : ''}`);
+  const res = await fetch(`/api/prescriptions${qs ? `?${qs}` : ''}`, {
+    headers: { 'X-Visitor-Id': getVisitorId() },
+  });
   if (!res.ok) {
     throw new Error('Failed to load prescriptions');
   }
@@ -185,7 +201,10 @@ export async function createPrescriptionOrder(payload: {
 }): Promise<PrescriptionSubmission> {
   const res = await fetch('/api/prescriptions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Visitor-Id': getVisitorId(),
+    },
     body: JSON.stringify(payload),
   });
   const data = await res.json();
@@ -201,7 +220,10 @@ export async function addFilesToPrescription(
 ): Promise<PrescriptionSubmission> {
   const res = await fetch(`/api/prescriptions/${encodeURIComponent(rxId)}/files`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Visitor-Id': getVisitorId(),
+    },
     body: JSON.stringify({ files }),
   });
   const data = await res.json();
@@ -217,7 +239,10 @@ export async function removePrescriptionFile(
 ): Promise<PrescriptionSubmission> {
   const res = await fetch(
     `/api/prescriptions/${encodeURIComponent(rxId)}/files/${encodeURIComponent(fileId)}`,
-    { method: 'DELETE' }
+    {
+      method: 'DELETE',
+      headers: { 'X-Visitor-Id': getVisitorId() },
+    }
   );
   const data = await res.json();
   if (!res.ok) {

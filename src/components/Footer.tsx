@@ -11,6 +11,7 @@ interface FooterProps {
   onNavigateOffers: () => void;
   onOpenPrescription: () => void;
   onOpenStaffPortal: () => void;
+  onOpenAdmin: () => void;
   onOpenProfile: () => void;
   onToggleLanguage: () => void;
 }
@@ -21,6 +22,7 @@ export const Footer: React.FC<FooterProps> = ({
   onNavigateOffers,
   onOpenPrescription,
   onOpenStaffPortal,
+  onOpenAdmin,
   onOpenProfile,
   onToggleLanguage,
 }) => {
@@ -102,6 +104,15 @@ export const Footer: React.FC<FooterProps> = ({
                     className="text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
                   >
                     {copy.prescription.staffTab}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={onOpenAdmin}
+                    className="text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer font-semibold"
+                  >
+                    {lang === 'ar' ? '📊 لوحة تحكم الإدارة الشاملة' : '📊 Admin & Management Center'}
                   </button>
                 </li>
               </ul>

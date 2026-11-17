@@ -76,8 +76,24 @@ export function previewEarnedPoints(
   return Math.max(1, Math.floor((amountPaidEgp / EGP_SPENT_PER_POINT) * multiplier));
 }
 
+function getVisitorId(): string {
+  if (typeof window === 'undefined') return 'default-visitor';
+  try {
+    let id = localStorage.getItem('mar_pharmacy_visitor_id');
+    if (!id) {
+      id = `v-${crypto.randomUUID()}`;
+      localStorage.setItem('mar_pharmacy_visitor_id', id);
+    }
+    return id;
+  } catch {
+    return 'default-visitor';
+  }
+}
+
 export async function fetchLoyaltyProfile(): Promise<UserLoyaltyProfile> {
-  const res = await fetch('/api/loyalty');
+  const res = await fetch('/api/loyalty', {
+    headers: { 'X-Visitor-Id': getVisitorId() },
+  });
   if (!res.ok) {
     throw new Error('Failed to load loyalty profile');
   }
@@ -91,7 +107,10 @@ export async function updateLoyaltyProfile(payload: {
 }): Promise<UserLoyaltyProfile> {
   const res = await fetch('/api/loyalty/profile', {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Visitor-Id': getVisitorId(),
+    },
     body: JSON.stringify(payload),
   });
   const data = await res.json();
@@ -116,7 +135,10 @@ export async function recordLoyaltyOrder(payload: {
 }> {
   const res = await fetch('/api/loyalty/orders', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Visitor-Id': getVisitorId(),
+    },
     body: JSON.stringify(payload),
   });
   const data = await res.json();
