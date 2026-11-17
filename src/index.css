@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-ar: 'Cairo', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-en: 'Plus Jakarta Sans', 'Cairo', system-ui, -apple-system, sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-size: 15px;
+  }
+
+  body {
+    line-height: 1.6;
+    letter-spacing: -0.005em;
+  }
+
+  html[lang="ar"] body {
+    font-family: var(--font-ar);
+    letter-spacing: 0;
+  }
+
+  html[lang="en"] body {
+    font-family: var(--font-en);
+  }
+}
+
+.font-mono-tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Smooth horizontal scrollbars for category navigation */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

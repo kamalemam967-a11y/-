@@ -1,0 +1,10 @@
+{
+  "name": "Copy of Mohamed Abd Raboo Pharmacy",
+  "description": "Trusted modern pharmacy e-commerce platform for medicines, vitamins, medical devices, skincare, baby care, and fast prescription delivery.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
